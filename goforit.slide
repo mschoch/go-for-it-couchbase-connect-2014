@@ -1,0 +1,222 @@
+Go For It
+Building Advanced Systems with Go and Couchbase Server
+7 Oct 2014
+
+Marty Schoch
+marty@couchbase.com
+http://github.com/couchbaselabs/go-couchbase
+https://github.com/couchbaselabs/cbugg
+https://github.com/couchbase/sync_gateway
+https://github.com/couchbaselabs/cbfs
+@mschoch
+
+* Go @ Couchbase
+History
+
+- Started small with Couchbase Labs
+- Steady growth internally
+- Now in production
+Things we like
+
+- First class concurrency support with clean code 
+- Custom structs easily map to JSON
+- Out of the box support for HTTP/HTTPS
+.html gopher.html
+
+* Go + Couchbase
+- Client SDK born in 2012
+- Currently Community Supported
+- Used for many projects internally
+- Officially supported client soon
+.html gophercb.html
+
+* Intro to Couchbase SDK
+
+* Running Code in this Presentation
+.play  -numbers errors.go /START OMIT/,/END OMIT/
+
+* Connect
+
+.play -edit -numbers connect.go /START OMIT/,/END OMIT/
+
+* Working with Data
+.code  -numbers doc.go /START OMIT/,/END OMIT/
+- API supports working with any JSON serializable structure, or raw []byte
+- Examples today will use the structure above
+
+* CRUD - Set
+
+.play -edit -numbers crudset.go /START OMIT/,/END OMIT/
+
+* CRUD - Get
+
+.play -edit -numbers crudget.go /START OMIT/,/END OMIT/
+
+* Mutation Ops
+- Add/AddRaw
+- Append
+- Cas/CasRaw
+- Delete
+- Incr
+- Set/SetRaw
+These all have very similar semantics to the other SDKs.
+
+* Handling Concurrency
+.html concurrency.html
+
+* Liking Events - Wrong
+.code -edit -numbers crudupdatewrong.go /LIKE OMIT/,/LIKE OMIT/
+
+* Concurrent Updates - Incorrect
+.play -edit -numbers crudupdatewrong.go /START OMIT/,/END OMIT/
+
+* Liking Events - Right
+.code -edit -numbers crudupdate.go /LIKE OMIT/,/LIKE OMIT/
+
+* Concurrent Updates - Safe using Update()
+.play -edit -numbers crudupdate.go /START OMIT/,/END OMIT/
+
+* Views - Top Events by Likes
+.code -numbers view.js
+- Emit 1 row for every event
+- Key is the number of likes
+- No value, we just use this view to find Event IDs
+
+* View Querying
+.play -edit -numbers views.go /START OMIT/,/END OMIT/
+
+* Behind the Curtains
+
+* expvar
+.code expvar.go /START OMIT/,/END OMIT/
+.image expvar.png 443 490
+- Go stdlib hidden gem - http://golang.org/pkg/expvar/
+
+* Connection Pooling
+- Operations on the Couchbase bucket ultimately need to talk to one of the Couchbase servers
+- Bulk operations talk to multiple Couchbase servers
+- Applications perform bucket operations on separate go routines, don't expect to be blocked by one another
+- This is simulated by maintaining pools of connections to the underlying servers
+
+* Connection Pool Properties
+- Return usable connection as fast as possible
+- Creating connections is relatively expensive (as compared to reusing them)
+- Don't create them unnecessarily
+- Don't create too many of them
+- The usual tuning operation here, too large a pool wastes resources, too small a pool means waiting for connections.
+
+* Connection Pool
+.code -numbers pool.go /START OMIT/,/END OMIT/
+- Using a buffered channel of connections as a thread-safe pool
+- Using a buffered channel of bools to track overflow connections
+
+* Quick Go Channel Review
+.code -numbers channel.go /START OMIT/,/END OMIT/
+
+* Connection Pool - Get Connection 1
+.code -numbers poolget.go /START OMIT/,/END OMIT/
+- Select on the pool channel, if reading won't block, read and return connection
+- If this would have blocked (no available connections in pool), proceed to next step
+
+* Connection Pool - Get Connection 2
+.code -numbers poolget.go /START P2 OMIT/,/END P2 OMIT/
+
+* Connection Pool - Get Connection 3
+.code -numbers poolget.go /START P3 OMIT/,/END P3 OMIT/
+
+* Connection Pool - Summary
+- Somewhat dense block of Go code
+- Worth your time to try to understand it
+- This current version of the code was refined during performance benchmarks of sync_gateway
+- See Dustin's blog 
+http://dustin.sallings.org/2014/04/25/chan-pool.html
+
+* Applications
+
+* cbugg - bug tracker on top of Couchbase
+.image 2013-cbugg.png
+- Typical CRUD operations, bugs, comments attachments
+- Uses a large number of features in the SDK, but not a complex application
+
+* cbugg - How it Works
+- Go HTTP server exposing REST API
+- Also serves static resources HTML/CSS/JS/images
+- End-user functionality through HTML5/AngularJS interface
+- Bugs, Comments stored in Couchbase
+- Searchable through Couchbase-Elasticsearch integration
+- Attachments stored in cbfs
+
+* cbugg - why?
+.image dog-food-bowl.jpg
+Ensure that the engineers building Couchbase rely on it being a high quality product.
+
+* cbugg - Deploying Views?
+- 3-4 developers
+- important functionality built on top of views
+- each with local Couchbase, and shared production instance
+- how do we propagate changes to design documents/views?
+- need to promote changes up to production, and back down to other developers
+
+* Version Controlled View Definitions
+.code -numbers viewupdate.go /START DEF OMIT/,/END DEF OMIT/
+- viewMarker tracks the latest deployed version
+- we store viewMarker in _ddocKey_
+- when we update _designDoc_, we bump the _ddocVersion_
+
+* Automatic View Definition Updating
+.code -numbers viewupdate.go /X OMIT/,/Y OMIT/
+
+* Automatic View Definition Updating
+.play -edit -numbers viewupdate.go /Q OMIT/,/R OMIT/
+
+* Sync Gateway
+.image sync-gateway.png 480 640
+- Server-side component integrating Couchbase Server and Couchbase Lite
+
+* Sync Gateway - How it Works
+- Shared nothing architecture, need to scale Sync Gateway nodes just like Couchbase Server
+- Sync Gateway maintains caches of data structures used for replication
+-  Relies on the Couchbase TAP protocol to be notified of changes
+- These notifications invalidate/update cache
+
+* TAP
+.play -edit -numbers tap.go /START OMIT/,/END OMIT/
+
+* From TAP to DCP
+- TAP nearing end of life
+- With 3.0 comes DCP (Database Change Protocol)
+- Go SDK will have one of the first DCP implementations
+- DCP only supported for internal replication at this time
+
+* cbfs
+.image cbfs.png 480 640
+- Distributed file storage on top of Couchbase
+
+* cbfs - How it Works
+- Clients upload/download files via HTTP
+- Nodes store file content locally in a content-addressable store (filename = content hash)
+- File metadata is stored in Couchbase
+- Nodes announce themselves/discover one another through Couchbase
+- Nodes ensure a minimum replica count is maintained to safely store data
+
+* cbfs - Node Heartbeat
+.image cbfs-heartbeat.png 480 640
+
+* cbfs - Add Document
+.image cbfs-add-file.png 480 640
+
+* cbfs - Get Document (blob exist on node)
+.image cbfs-get-file.png 480 640
+
+* cbfs - Get Document (blob does NOT exist on node)
+.image cbfs-get-file-2.png 480 640
+
+* Go + Couchbase
+- Go - First class concurrency support with clean code 
+- Go - JSON mapping to custom structs
+- Go - Out of the box support for HTTP/HTTPS
+- Couchbase - Fast and scalable JSON storage
+- Go + Couchbase = Powerful starting point for your app
+.html gophercb.html
+
+
