@@ -25,7 +25,7 @@ Things we like
 
 * Go + Couchbase
 - Client SDK born in 2012
-- Currently Community Supported
+- Currently community supported
 - Used for many projects internally
 - Officially supported client soon
 .html gophercb.html
@@ -152,10 +152,10 @@ Ensure that the engineers building Couchbase rely on it being a high quality pro
 
 * cbugg - Deploying Views?
 - 3-4 developers
-- important functionality built on top of views
-- each with local Couchbase, and shared production instance
-- how do we propagate changes to design documents/views?
-- need to promote changes up to production, and back down to other developers
+- Important functionality built on top of views
+- Each with local Couchbase, and shared production instance
+- How do we propagate changes to design documents/views?
+- Need to promote changes up to production, and back down to other developers
 
 * Version Controlled View Definitions
 .code -numbers viewupdate.go /START DEF OMIT/,/END DEF OMIT/
