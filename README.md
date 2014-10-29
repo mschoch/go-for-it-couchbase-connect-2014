@@ -2,6 +2,9 @@
 
 Presentation given at Couchbase Connect 2014
 
+[![Building Advanced Systems with Go and Couchbase Server: Couchbase Connect 2014](http://img.youtube.com/vi/ablZG08AjNg/0.jpg)](http://www.youtube.com/watch?v=ablZG08AjNg)
+
+
 [Download PDF](https://github.com/mschoch/go-for-it-couchbase-connect-2014/blob/master/GoForIt.pdf?raw=true)
 
 Built using the [present](https://godoc.org/code.google.com/p/go.tools/present) tool, with custom [css/templates](https://github.com/mschoch/present-templates/tree/master/couchbase-connect-2014).
